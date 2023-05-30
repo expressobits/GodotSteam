@@ -2,21 +2,24 @@
 #define STEAM_MULTIPLAYER_PEER_H
 
 // Include Godot headers
-#include "scene/main/multiplayer_peer.h"
+#include <godot_cpp/classes/multiplayer_peer_extension.hpp>
 
 // Steam APIs
-#include "core/os/os.h"
+#include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/time.hpp>
 #include "godotsteam.h"
 
 // #include "steam_id.h"
+
+#include "map"
 
 #define MAX_TIME_WITHOUT_MESSAGE 1000
 
 Dictionary steamIdToDict(CSteamID input);
 
-class SteamMultiplayerPeer : public MultiplayerPeer {
+class SteamMultiplayerPeer : public MultiplayerPeerExtension {
 public:
-	GDCLASS(SteamMultiplayerPeer, MultiplayerPeer);
+	GDCLASS(SteamMultiplayerPeer, MultiplayerPeerExtension);
 	static String convertEResultToString(EResult e);
 
 	Dictionary get_peer_info(int i);
@@ -43,22 +46,22 @@ public:
 	static void _bind_methods();
 
 	// MultiplayerPeer stuff
-	virtual int get_available_packet_count() const override;
-	virtual Error get_packet(const uint8_t **r_buffer, int &r_buffer_size) override;
-	virtual Error put_packet(const uint8_t *p_buffer, int p_buffer_size) override;
-	virtual int get_max_packet_size() const override;
-	virtual bool is_server_relay_supported() const override;
+	virtual Error _get_packet(const uint8_t * *r_buffer, int32_t *r_buffer_size) override;
+	virtual Error _put_packet(const uint8_t *p_buffer, int p_buffer_size) override;
+	virtual int32_t _get_available_packet_count() const override;
+	virtual int32_t _get_max_packet_size() const override;
+	virtual int32_t _get_packet_channel() const override;
+	virtual MultiplayerPeer::TransferMode _get_packet_mode() const override;
+	virtual void _set_target_peer(int32_t p_peer_id) override;
+	virtual int32_t _get_packet_peer() const override;
+	virtual bool _is_server() const override;
+	virtual void _poll() override;
+	virtual void _close() override;
+	virtual void _disconnect_peer(int32_t p_peer, bool p_force = false) override;
+	virtual int32_t _get_unique_id() const override;
+	virtual bool _is_server_relay_supported() const override;
+	virtual MultiplayerPeer::ConnectionStatus _get_connection_status() const override;
 
-	virtual void set_target_peer(int p_peer_id) override;
-	virtual int get_packet_peer() const override;
-	virtual TransferMode get_packet_mode() const override;
-	virtual int get_packet_channel() const override;
-	virtual void disconnect_peer(int p_peer, bool p_force = false) override;
-	virtual bool is_server() const override;
-	virtual void poll() override;
-	virtual void close() override;
-	virtual int get_unique_id() const override;
-	virtual ConnectionStatus get_connection_status() const override;
 
 	// all SteamGodot from here on down
 
@@ -171,13 +174,15 @@ public:
 				pending_retry_packets.pop_front();
 			}
 		}
+		static void _bind_methods();
 		bool operator==(const ConnectionData &data) {
 			return steam_id == data.steam_id;
 		}
 		EResult rawSend(Packet *packet) {
 			if (packet->channel == CHANNEL_MANAGEMENT::PING_CHANNEL) {
 				if (packet->size != sizeof(PingPayload)) {
-					print_error("THIS PING IS THE WRONG SIZE, REJECTING!");
+					// TODO Dont exist print_error
+					// print_error("THIS PING IS THE WRONG SIZE, REJECTING!");
 					return k_EResultFail;
 				}
 			}
@@ -215,7 +220,8 @@ public:
 			return sendPending();
 		}
 		Error ping(const PingPayload &p) {
-			last_msg_timestamp = OS::get_singleton()->get_ticks_msec(); // only ping once per maxDeltaT;
+			// TODO dont exist OS::get_singleton()->get_ticks_msec();
+			// last_msg_timestamp = OS::get_singleton()->get_ticks_msec(); // only ping once per maxDeltaT;
 
 			auto packet = new Packet((void *)&p, sizeof(PingPayload), TRANSFER_MODE_RELIABLE, PING_CHANNEL);
 			return send(packet);
@@ -268,8 +274,8 @@ public:
 		}
 	};
 
-	HashMap<int64_t, Ref<ConnectionData>> connections_by_steamId64;
-	HashMap<int, Ref<ConnectionData>> peerId_to_steamId;
+	std::map<int64_t, Ref<ConnectionData>> connections_by_steamId64;
+	std::map<int, Ref<ConnectionData>> peerId_to_steamId;
 
 	int get_peer_by_steam_id(CSteamID steamId);
 	CSteamID get_steam_id_by_peer(int peer);
@@ -309,8 +315,10 @@ public:
 		output["unique_id"] = unique_id;
 
 		Array connections;
-		for (auto E = connections_by_steamId64.begin(); E; ++E) {
-			auto qwer = E->value->collect_debug_data();
+		std::map<int64_t, godot::Ref<SteamMultiplayerPeer::ConnectionData>>::iterator it = connections_by_steamId64.begin();
+		while(it != connections_by_steamId64.end())
+		{
+			auto qwer = it->second->collect_debug_data();
 			connections.push_back(qwer);
 		}
 		output["connections"] = connections;

@@ -35,6 +35,9 @@
 // Include some system headers
 #include "map"
 
+#define STEAM_BUFFER_SIZE 255
+#define MAX_STEAM_PACKET_SIZE k_cbMaxSteamNetworkingSocketsMessageSizeSend
+
 using namespace godot;
 
 class Steam: public Object {

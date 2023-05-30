@@ -1,5 +1,5 @@
 #include "steam_multiplayer_peer.h"
-#include "core/io/json.h"
+// #include "core/io/json.h"
 #include "godotsteam.h"
 
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::LOBBY_TYPE);
@@ -96,16 +96,16 @@ void SteamMultiplayerPeer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("debug_data", PropertyInfo(Variant::DICTIONARY, "data")));
 }
 
-int SteamMultiplayerPeer::get_available_packet_count() const {
+int32_t SteamMultiplayerPeer::_get_available_packet_count() const {
 	return incoming_packets.size();
 }
 
-Error SteamMultiplayerPeer::get_packet(const uint8_t **r_buffer, int &r_buffer_size) {
+Error SteamMultiplayerPeer::_get_packet(const uint8_t **r_buffer, int32_t *r_buffer_size) {
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, ERR_UNAVAILABLE, "No incoming packets available.");
 
 	delete next_received_packet;
 	next_received_packet = incoming_packets.front()->get();
-	r_buffer_size = next_received_packet->size;
+	*r_buffer_size = next_received_packet->size;
 	*r_buffer = (const uint8_t *)(&next_received_packet->data);
 	incoming_packets.pop_front();
 	return OK;
@@ -133,7 +133,7 @@ int SteamMultiplayerPeer::_get_steam_transfer_flag() {
 	ERR_FAIL_V_MSG(-1, "flags error. not sure what happened!?");
 }
 
-Error SteamMultiplayerPeer::put_packet(const uint8_t *p_buffer, int p_buffer_size) {
+Error SteamMultiplayerPeer::_put_packet(const uint8_t *p_buffer, int32_t p_buffer_size) {
 	int transferMode = _get_steam_transfer_flag();
 	auto channel = get_transfer_channel() + CHANNEL_MANAGEMENT::SIZE;
 
@@ -154,26 +154,26 @@ Error SteamMultiplayerPeer::put_packet(const uint8_t *p_buffer, int p_buffer_siz
 	}
 }
 
-int SteamMultiplayerPeer::get_max_packet_size() const {
+int32_t SteamMultiplayerPeer::_get_max_packet_size() const {
 	return k_cbMaxSteamNetworkingSocketsMessageSizeSend;
 }
 
-bool SteamMultiplayerPeer::is_server_relay_supported() const {
+bool SteamMultiplayerPeer::_is_server_relay_supported() const {
 	return as_relay;
 }
 
-void SteamMultiplayerPeer::set_target_peer(int p_peer_id) {
+void SteamMultiplayerPeer::_set_target_peer(int32_t p_peer_id) {
 	target_peer = p_peer_id;
 };
 
-int SteamMultiplayerPeer::get_packet_peer() const {
+int32_t SteamMultiplayerPeer::_get_packet_peer() const {
 	ERR_FAIL_COND_V_MSG(_is_active() == false, 1, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, 1, "No packets to get!");
 
 	return connections_by_steamId64[incoming_packets.front()->get()->sender.ConvertToUint64()]->peer_id;
 }
 
-SteamMultiplayerPeer::TransferMode SteamMultiplayerPeer::get_packet_mode() const {
+SteamMultiplayerPeer::TransferMode SteamMultiplayerPeer::_get_packet_mode() const {
 	ERR_FAIL_COND_V_MSG(_is_active() == false, TRANSFER_MODE_RELIABLE, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, TRANSFER_MODE_RELIABLE, "No pending packets, cannot get transfer mode!");
 
@@ -184,24 +184,24 @@ SteamMultiplayerPeer::TransferMode SteamMultiplayerPeer::get_packet_mode() const
 	}
 }
 
-int SteamMultiplayerPeer::get_packet_channel() const {
+int32_t SteamMultiplayerPeer::_get_packet_channel() const {
 	ERR_FAIL_COND_V_MSG(_is_active() == false, TRANSFER_MODE_RELIABLE, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, TRANSFER_MODE_RELIABLE, "No pending packets, cannot get channel!");
 
 	return incoming_packets.front()->get()->channel;
 }
 
-void SteamMultiplayerPeer::disconnect_peer(int p_peer, bool p_force) {
+void SteamMultiplayerPeer::_disconnect_peer(int32_t p_peer, bool p_force) {
 	ERR_FAIL_MSG("ERROR:: SteamMultiplayerPeer::disconnect_peer not yet implemented");
 	// SteamMatchmaking()
 }
 
-bool SteamMultiplayerPeer::is_server() const {
+bool SteamMultiplayerPeer::_is_server() const {
 	return unique_id == 1;
 }
 
 #define MAX_MESSAGE_COUNT 255
-void SteamMultiplayerPeer::poll() {
+void SteamMultiplayerPeer::_poll() {
 	{
 		SteamNetworkingMessage_t *messages[MAX_MESSAGE_COUNT];
 		int count = SteamNetworkingMessages()->ReceiveMessagesOnChannel(CHANNEL_MANAGEMENT::SIZE, messages, MAX_MESSAGE_COUNT);
@@ -217,10 +217,11 @@ void SteamMultiplayerPeer::poll() {
 			auto key = E->key;
 			Ref<SteamMultiplayerPeer::ConnectionData> value = E->value;
 			auto t = value->last_msg_timestamp + MAX_TIME_WITHOUT_MESSAGE; // pretty sure this will wrap. Should I fix this?
-
-			if (value->peer_id == -1 || t < OS::get_singleton()->get_ticks_msec()) {
-				value->ping(a);
-			}
+			
+			// TODO dont exist OS::get_singleton()->get_ticks_msec()
+			// if (value->peer_id == -1 || t < OS::get_singleton()->get_ticks_msec()) {
+			// 	value->ping(a);
+			// }
 		}
 	}
 	{
@@ -248,7 +249,8 @@ void SteamMultiplayerPeer::process_message(const SteamNetworkingMessage_t *msg) 
 }
 void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
 	if (sizeof(PingPayload) != msg->GetSize()) {
-		print_error("wrong size of payload");
+		// TODO Dont exist print_error
+		// print_error("wrong size of payload");
 		return;
 	}
 	auto data = (PingPayload *)msg->GetData();
@@ -270,17 +272,17 @@ void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
 	}
 }
 
-void SteamMultiplayerPeer::close() {
+void SteamMultiplayerPeer::_close() {
 	ERR_FAIL_COND_MSG(lobby_id == CSteamID(), "CAN'T LEAVE A LOBBY IF YOUR'E NOT IN ONE!");
 	SteamMatchmaking()->LeaveLobby(lobby_id);
 }
 
-int SteamMultiplayerPeer::get_unique_id() const {
+int32_t SteamMultiplayerPeer::_get_unique_id() const {
 	ERR_FAIL_COND_V_MSG(_is_active() == false, 0, "The multiplayer instance isn't currently active.");
 	return unique_id;
 }
 
-SteamMultiplayerPeer::ConnectionStatus SteamMultiplayerPeer::get_connection_status() const {
+SteamMultiplayerPeer::ConnectionStatus SteamMultiplayerPeer::_get_connection_status() const {
 	if (lobby_state == LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED) {
 		return ConnectionStatus::CONNECTION_DISCONNECTED;
 	} else if (lobby_state == LOBBY_STATE::LOBBY_STATE_CLIENT || lobby_state == LOBBY_STATE::LOBBY_STATE_HOSTING) {

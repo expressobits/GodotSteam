@@ -44,7 +44,6 @@ using namespace godot;
 #define STEAM_USER_WEB_INSTANCE 4
 #define QUERY_PORT_ERROR 0xFFFE
 #define QUERY_PORT_NOT_INITIALIZED 0xFFFF
-#define STEAM_BUFFER_SIZE 255
 #define STEAM_LARGE_BUFFER_SIZE 8160
 
 // Define Friends constants
