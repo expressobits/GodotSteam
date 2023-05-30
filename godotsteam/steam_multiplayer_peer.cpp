@@ -139,9 +139,9 @@ Error SteamMultiplayerPeer::_put_packet(const uint8_t *p_buffer, int32_t p_buffe
 
 	if (target_peer == 0) { // send to ALL
 		auto returnValue = OK;
-		for (auto E = connections_by_steamId64.begin(); E; ++E) {
+		for (auto E = connections_by_steamId64.begin(); E != connections_by_steamId64.end(); ++E) {
 			auto packet = new Packet(p_buffer, p_buffer_size, transferMode, channel);
-			auto errorCode = E->value->send(packet);
+			auto errorCode = E->second->send(packet);
 			if (errorCode != OK) {
 				DEBUG_DATA_SIGNAL_V("put_packet failed!", errorCode);
 				returnValue = errorCode;
@@ -166,11 +166,11 @@ void SteamMultiplayerPeer::_set_target_peer(int32_t p_peer_id) {
 	target_peer = p_peer_id;
 };
 
-int32_t SteamMultiplayerPeer::_get_packet_peer() const {
+int32_t SteamMultiplayerPeer::_get_packet_peer() const{
 	ERR_FAIL_COND_V_MSG(_is_active() == false, 1, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, 1, "No packets to get!");
 
-	return connections_by_steamId64[incoming_packets.front()->get()->sender.ConvertToUint64()]->peer_id;
+	return connections_by_steamId64.at(incoming_packets.front()->get()->sender.ConvertToUint64())->peer_id;
 }
 
 SteamMultiplayerPeer::TransferMode SteamMultiplayerPeer::_get_packet_mode() const {
@@ -213,15 +213,14 @@ void SteamMultiplayerPeer::_poll() {
 	}
 	{
 		auto a = PingPayload();
-		for (auto E = connections_by_steamId64.begin(); E; ++E) {
-			auto key = E->key;
-			Ref<SteamMultiplayerPeer::ConnectionData> value = E->value;
+		for (auto E = connections_by_steamId64.begin(); E != connections_by_steamId64.end(); ++E) {
+			auto key = E->first;
+			Ref<SteamMultiplayerPeer::ConnectionData> value = E->second;
 			auto t = value->last_msg_timestamp + MAX_TIME_WITHOUT_MESSAGE; // pretty sure this will wrap. Should I fix this?
 			
-			// TODO dont exist OS::get_singleton()->get_ticks_msec()
-			// if (value->peer_id == -1 || t < OS::get_singleton()->get_ticks_msec()) {
-			// 	value->ping(a);
-			// }
+			if (value->peer_id == -1 || t < Time::get_singleton()->get_ticks_msec()) {
+				value->ping(a);
+			}
 		}
 	}
 	{
@@ -249,8 +248,7 @@ void SteamMultiplayerPeer::process_message(const SteamNetworkingMessage_t *msg) 
 }
 void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
 	if (sizeof(PingPayload) != msg->GetSize()) {
-		// TODO Dont exist print_error
-		// print_error("wrong size of payload");
+		ERR_FAIL_MSG("wrong size of payload");
 		return;
 	}
 	auto data = (PingPayload *)msg->GetData();
@@ -293,17 +291,17 @@ SteamMultiplayerPeer::ConnectionStatus SteamMultiplayerPeer::_get_connection_sta
 }
 
 int SteamMultiplayerPeer::get_peer_by_steam_id(CSteamID steamId) {
-	ERR_FAIL_COND_V_MSG(connections_by_steamId64.has(steamId.ConvertToUint64()) == false, -1, "STEAMID NOT CONNECTED!");
+	ERR_FAIL_COND_V_MSG(connections_by_steamId64.find(steamId.ConvertToUint64()) == connections_by_steamId64.end(), -1, "STEAMID NOT CONNECTED!");
 	return connections_by_steamId64[steamId.ConvertToUint64()]->peer_id;
 }
 
 CSteamID SteamMultiplayerPeer::get_steam_id_by_peer(int peer) {
-	ERR_FAIL_COND_V_MSG(peerId_to_steamId.has(peer) == false, CSteamID(), "PEER DOES NOT EXIST!");
+	ERR_FAIL_COND_V_MSG(peerId_to_steamId.find(peer) == peerId_to_steamId.end(), CSteamID(), "PEER DOES NOT EXIST!");
 	return peerId_to_steamId[peer]->steam_id;
 }
 
 void SteamMultiplayerPeer::set_steam_id_peer(CSteamID steamId, int peer_id) {
-	ERR_FAIL_COND_MSG(connections_by_steamId64.has(steamId.ConvertToUint64()) == false, "STEAMID MISSING!");
+	ERR_FAIL_COND_MSG(connections_by_steamId64.find(steamId.ConvertToUint64()) == connections_by_steamId64.end(), "STEAMID MISSING!");
 	auto con = connections_by_steamId64[steamId.ConvertToUint64()];
 	if (con->peer_id == -1) {
 		con->peer_id = peer_id;
@@ -319,7 +317,7 @@ void SteamMultiplayerPeer::set_steam_id_peer(CSteamID steamId, int peer_id) {
 }
 
 Ref<SteamMultiplayerPeer::ConnectionData> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
-	if (peerId_to_steamId.has(peer_id)) {
+	if (peerId_to_steamId.find(peer_id) == peerId_to_steamId.end()) {
 		return peerId_to_steamId[peer_id];
 	}
 	return nullptr;
@@ -370,7 +368,7 @@ void SteamMultiplayerPeer::lobby_created_scb(LobbyCreated_t *lobby_data, bool io
 		int connect = lobby_data->m_eResult;
 		lobby_id = lobby_data->m_ulSteamIDLobby;
 		uint64 lobby = lobby_id.ConvertToUint64();
-		emit_signal(SNAME("lobby_created"), connect, lobby); // why do I do this? edit: no really, why am I doing this?
+		emit_signal("lobby_created", connect, lobby); // why do I do this? edit: no really, why am I doing this?
 	}
 }
 
@@ -815,7 +813,7 @@ Dictionary SteamMultiplayerPeer::get_peer_info(int i) {
 uint64_t SteamMultiplayerPeer::get_steam64_from_peer_id(int peer) {
 	if (peer == this->unique_id) {
 		return SteamUser()->GetSteamID().ConvertToUint64();
-	} else if (peerId_to_steamId.has(peer)) {
+	} else if (peerId_to_steamId.find(peer) == peerId_to_steamId.end()) {
 		return peerId_to_steamId[peer]->steam_id.ConvertToUint64();
 	} else {
 		return -1;
@@ -825,7 +823,7 @@ uint64_t SteamMultiplayerPeer::get_steam64_from_peer_id(int peer) {
 int SteamMultiplayerPeer::get_peer_id_from_steam64(uint64_t steamid) {
 	if (steamid == SteamUser()->GetSteamID().ConvertToUint64()) {
 		return this->unique_id;
-	} else if (connections_by_steamId64.has(steamid)) {
+	} else if (connections_by_steamId64.find(steamid) == connections_by_steamId64.end()) {
 		return connections_by_steamId64[steamid]->peer_id;
 	} else {
 		return -1;
@@ -834,8 +832,9 @@ int SteamMultiplayerPeer::get_peer_id_from_steam64(uint64_t steamid) {
 
 Dictionary SteamMultiplayerPeer::get_peer_map() {
 	Dictionary output;
-	for (auto E = connections_by_steamId64.begin(); E; ++E) {
-		output[E->value->peer_id] = E->value->steam_id.ConvertToUint64();
+	for (auto E = connections_by_steamId64.begin(); E != connections_by_steamId64.end(); ++E) {
+		auto key = E->first;
+		output[E->second->peer_id] = E->second->steam_id.ConvertToUint64();
 	}
 	return output;
 }

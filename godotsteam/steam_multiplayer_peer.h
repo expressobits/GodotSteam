@@ -181,8 +181,7 @@ public:
 		EResult rawSend(Packet *packet) {
 			if (packet->channel == CHANNEL_MANAGEMENT::PING_CHANNEL) {
 				if (packet->size != sizeof(PingPayload)) {
-					// TODO Dont exist print_error
-					// print_error("THIS PING IS THE WRONG SIZE, REJECTING!");
+					ERR_FAIL_MSG("THIS PING IS THE WRONG SIZE, REJECTING!");
 					return k_EResultFail;
 				}
 			}
@@ -220,8 +219,7 @@ public:
 			return sendPending();
 		}
 		Error ping(const PingPayload &p) {
-			// TODO dont exist OS::get_singleton()->get_ticks_msec();
-			// last_msg_timestamp = OS::get_singleton()->get_ticks_msec(); // only ping once per maxDeltaT;
+			last_msg_timestamp = Time::get_singleton()->get_ticks_msec(); // only ping once per maxDeltaT;
 
 			auto packet = new Packet((void *)&p, sizeof(PingPayload), TRANSFER_MODE_RELIABLE, PING_CHANNEL);
 			return send(packet);
