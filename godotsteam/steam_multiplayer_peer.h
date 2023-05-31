@@ -181,7 +181,7 @@ public:
 		EResult rawSend(Packet *packet) {
 			if (packet->channel == CHANNEL_MANAGEMENT::PING_CHANNEL) {
 				if (packet->size != sizeof(PingPayload)) {
-					ERR_FAIL_MSG("THIS PING IS THE WRONG SIZE, REJECTING!");
+					Steam::get_singleton()->steamworksError("THIS PING IS THE WRONG SIZE, REJECTING!");
 					return k_EResultFail;
 				}
 			}

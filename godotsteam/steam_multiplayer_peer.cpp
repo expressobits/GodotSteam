@@ -192,7 +192,7 @@ int32_t SteamMultiplayerPeer::_get_packet_channel() const {
 }
 
 void SteamMultiplayerPeer::_disconnect_peer(int32_t p_peer, bool p_force) {
-	ERR_FAIL_MSG("ERROR:: SteamMultiplayerPeer::disconnect_peer not yet implemented");
+	Steam::get_singleton()->steamworksError("ERROR:: SteamMultiplayerPeer::disconnect_peer not yet implemented");
 	// SteamMatchmaking()
 }
 
@@ -248,7 +248,7 @@ void SteamMultiplayerPeer::process_message(const SteamNetworkingMessage_t *msg) 
 }
 void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
 	if (sizeof(PingPayload) != msg->GetSize()) {
-		ERR_FAIL_MSG("wrong size of payload");
+		Steam::get_singleton()->steamworksError("wrong size of payload");
 		return;
 	}
 	auto data = (PingPayload *)msg->GetData();
@@ -361,8 +361,7 @@ Error SteamMultiplayerPeer::create_lobby(LOBBY_TYPE lobby_type, int max_players)
 void SteamMultiplayerPeer::lobby_created_scb(LobbyCreated_t *lobby_data, bool io_failure) {
 	if (io_failure) {
 		lobby_state = LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED;
-		ERR_FAIL_MSG("lobby_created failed? idk wtf is happening");
-		// steamworksError("lobby_created");
+		Steam::get_singleton()->steamworksError("lobby_created failed? idk wtf is happening");
 	} else {
 		lobby_state = LOBBY_STATE::LOBBY_STATE_HOSTING;
 		int connect = lobby_data->m_eResult;
