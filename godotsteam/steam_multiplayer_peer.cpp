@@ -2,7 +2,6 @@
 // #include "core/io/json.h"
 #include "godotsteam.h"
 
-VARIANT_ENUM_CAST(SteamMultiplayerPeer::LOBBY_TYPE);
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::CHAT_CHANGE);
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::LOBBY_STATE);
 
@@ -58,13 +57,6 @@ void SteamMultiplayerPeer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_all_lobby_data"), &SteamMultiplayerPeer::get_all_lobby_data);
 
 	ClassDB::bind_method(D_METHOD("set_lobby_joinable","joinable"), &SteamMultiplayerPeer::set_lobby_joinable);
-
-
-	BIND_ENUM_CONSTANT(LOBBY_TYPE_PRIVATE);
-	BIND_ENUM_CONSTANT(LOBBY_TYPE_FRIENDS_ONLY);
-	BIND_ENUM_CONSTANT(LOBBY_TYPE_PUBLIC);
-	BIND_ENUM_CONSTANT(LOBBY_TYPE_INVISIBLE);
-	// BIND_ENUM_CONSTANT(PRIVATE_UNIQUE);
 
 	BIND_ENUM_CONSTANT(CHAT_CHANGE_ENTERED);
 	BIND_ENUM_CONSTANT(CHAT_CHANGE_LEFT);
@@ -347,7 +339,7 @@ void SteamMultiplayerPeer::removed_connection_peer(const CSteamID &steamId) {
 	connections_by_steamId64.erase(steamId.ConvertToUint64());
 }
 
-Error SteamMultiplayerPeer::create_lobby(LOBBY_TYPE lobby_type, int max_players) {
+Error SteamMultiplayerPeer::create_lobby(Steam::LobbyType lobby_type, int max_players) {
 	ERR_FAIL_COND_V_MSG(SteamMatchmaking() == NULL, ERR_DOES_NOT_EXIST, "`SteamMatchmaking()` is null.");
 	ERR_FAIL_COND_V_MSG(lobby_state != LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT CREATE A LOBBY WHILE IN A LOBBY!");
 

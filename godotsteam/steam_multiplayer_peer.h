@@ -75,14 +75,6 @@ public:
 		CSteamID steam_id = CSteamID();
 	};
 
-	enum LOBBY_TYPE {
-		LOBBY_TYPE_PRIVATE = ELobbyType::k_ELobbyTypePrivate,
-		LOBBY_TYPE_FRIENDS_ONLY = ELobbyType::k_ELobbyTypeFriendsOnly,
-		LOBBY_TYPE_PUBLIC = ELobbyType::k_ELobbyTypePublic,
-		LOBBY_TYPE_INVISIBLE = ELobbyType::k_ELobbyTypeInvisible,
-		// PRIVATE_UNIQUE = ELobbyType::k_ELobbyTypePrivateUnique, //this type must be created from Steam's web api.
-	};
-
 	enum CHAT_CHANGE {
 		CHAT_CHANGE_ENTERED = k_EChatMemberStateChangeEntered,
 		CHAT_CHANGE_LEFT = k_EChatMemberStateChangeLeft,
@@ -284,7 +276,7 @@ public:
 	void add_pending_peer(const CSteamID &steamId);
 	void removed_connection_peer(const CSteamID &steamId);
 
-	Error create_lobby(LOBBY_TYPE lobbyType, int max_players);
+	Error create_lobby(Steam::LobbyType lobbyType, int max_players);
 	Error join_lobby(uint64 lobbyId);
 
 	STEAM_CALLBACK(SteamMultiplayerPeer, lobby_message_scb, LobbyChatMsg_t, callbackLobbyMessage);
