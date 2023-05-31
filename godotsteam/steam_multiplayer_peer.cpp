@@ -11,7 +11,8 @@ SteamMultiplayerPeer::SteamMultiplayerPeer() :
 		callbackNetworkMessagesSessionRequest(this, &SteamMultiplayerPeer::network_messages_session_request_scb),
 		callbackNetworkMessagesSessionFailed(this, &SteamMultiplayerPeer::network_messages_session_failed_scb),
 		callbackLobbyJoined(this, &SteamMultiplayerPeer::lobby_joined_scb),
-		callbackLobbyDataUpdate(this, &SteamMultiplayerPeer::lobby_data_update_scb) {
+		callbackLobbyDataUpdate(this, &SteamMultiplayerPeer::lobby_data_update_scb),
+		callbackLobbyCreated(this, &SteamMultiplayerPeer::lobby_created_scb) {
 	if (SteamUser() != NULL) {
 		steam_id = SteamUser()->GetSteamID();
 	}
@@ -343,24 +344,25 @@ Error SteamMultiplayerPeer::create_lobby(Steam::LobbyType lobby_type, int max_pl
 	ERR_FAIL_COND_V_MSG(SteamMatchmaking() == NULL, ERR_DOES_NOT_EXIST, "`SteamMatchmaking()` is null.");
 	ERR_FAIL_COND_V_MSG(lobby_state != LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT CREATE A LOBBY WHILE IN A LOBBY!");
 
-	SteamAPICall_t api_call = SteamMatchmaking()->CreateLobby((ELobbyType)lobby_type, max_players);
-	callResultCreateLobby.Set(api_call, this, &SteamMultiplayerPeer::lobby_created_scb);
+	Steam::get_singleton()->createLobby(lobby_type, max_players);
+	// SteamAPICall_t api_call = SteamMatchmaking()->CreateLobby((ELobbyType)lobby_type, max_players);
+	// callResultCreateLobby.Set(api_call, this, &SteamMultiplayerPeer::lobby_created_scb);
 	unique_id = 1;
 	lobby_state = LOBBY_STATE::LOBBY_STATE_HOST_PENDING;
 	return OK;
 }
 
-void SteamMultiplayerPeer::lobby_created_scb(LobbyCreated_t *lobby_data, bool io_failure) {
-	if (io_failure) {
-		lobby_state = LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED;
-		Steam::get_singleton()->steamworksError("lobby_created failed? idk wtf is happening");
-	} else {
+void SteamMultiplayerPeer::lobby_created_scb(LobbyCreated_t *lobby_data) {
+	// if (io_failure) {
+	// 	lobby_state = LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED;
+	// 	Steam::get_singleton()->steamworksError("lobby_created failed? idk wtf is happening");
+	// } else {
 		lobby_state = LOBBY_STATE::LOBBY_STATE_HOSTING;
-		int connect = lobby_data->m_eResult;
+		// int connect = lobby_data->m_eResult;
 		lobby_id = lobby_data->m_ulSteamIDLobby;
-		uint64 lobby = lobby_id.ConvertToUint64();
-		emit_signal("lobby_created", connect, lobby); // why do I do this? edit: no really, why am I doing this?
-	}
+		// uint64 lobby = lobby_id.ConvertToUint64();
+		// emit_signal("lobby_created", connect, lobby); // why do I do this? edit: no really, why am I doing this?
+	// }
 }
 
 Error SteamMultiplayerPeer::join_lobby(uint64 lobbyId) {

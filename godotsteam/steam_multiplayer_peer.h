@@ -31,7 +31,6 @@ public:
 public:
 	// Matchmaking call results ///////////// stolen
 	CCallResult<SteamMultiplayerPeer, LobbyCreated_t> callResultCreateLobby;
-	void lobby_created_scb(LobbyCreated_t *call_data, bool io_failure);
 	CCallResult<SteamMultiplayerPeer, LobbyMatchList_t> callResultLobbyList;
 	void lobby_match_list_scb(LobbyMatchList_t *call_data, bool io_failure);
 
@@ -285,6 +284,7 @@ public:
 	STEAM_CALLBACK(SteamMultiplayerPeer, network_messages_session_failed_scb, SteamNetworkingMessagesSessionFailed_t, callbackNetworkMessagesSessionFailed);
 	STEAM_CALLBACK(SteamMultiplayerPeer, lobby_joined_scb, LobbyEnter_t, callbackLobbyJoined);
 	STEAM_CALLBACK(SteamMultiplayerPeer, lobby_data_update_scb, LobbyDataUpdate_t, callbackLobbyDataUpdate);
+	STEAM_CALLBACK(SteamMultiplayerPeer, lobby_created_scb, LobbyCreated_t, callbackLobbyCreated);
 
 	int _get_steam_transfer_flag();
 
