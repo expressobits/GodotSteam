@@ -75,7 +75,7 @@ public:
 		CSteamID steam_id = CSteamID();
 	};
 
-	enum CHAT_CHANGE {
+	enum ChatChange {
 		CHAT_CHANGE_ENTERED = k_EChatMemberStateChangeEntered,
 		CHAT_CHANGE_LEFT = k_EChatMemberStateChangeLeft,
 		CHAT_CHANGE_DISCONNECTED = k_EChatMemberStateChangeDisconnected,
@@ -83,14 +83,14 @@ public:
 		CHAT_CHANGE_BANNED = k_EChatMemberStateChangeBanned
 	};
 
-	enum LOBBY_STATE {
+	enum LobbyState {
 		LOBBY_STATE_NOT_CONNECTED,
 		LOBBY_STATE_HOST_PENDING,
 		LOBBY_STATE_HOSTING,
 		LOBBY_STATE_CLIENT_PENDING,
 		LOBBY_STATE_CLIENT
-	} lobby_state = LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED;
-	LOBBY_STATE get_state() { return lobby_state; }
+	} lobby_state = LobbyState::LOBBY_STATE_NOT_CONNECTED;
+	LobbyState get_state() { return lobby_state; }
 
 	bool no_nagle = false;
 	void set_no_nagle(bool value) {
@@ -139,7 +139,7 @@ public:
 	Packet *next_received_packet = new Packet; // this packet gets deleted at the first get_packet request
 	List<Packet *> incoming_packets;
 
-	_FORCE_INLINE_ bool _is_active() const { return lobby_state != LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED; }
+	_FORCE_INLINE_ bool _is_active() const { return lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
 
 	class ConnectionData : public RefCounted {
 		GDCLASS(ConnectionData, RefCounted);

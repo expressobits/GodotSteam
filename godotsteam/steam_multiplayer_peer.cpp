@@ -2,8 +2,8 @@
 // #include "core/io/json.h"
 #include "godotsteam.h"
 
-VARIANT_ENUM_CAST(SteamMultiplayerPeer::CHAT_CHANGE);
-VARIANT_ENUM_CAST(SteamMultiplayerPeer::LOBBY_STATE);
+VARIANT_ENUM_CAST(SteamMultiplayerPeer::ChatChange);
+VARIANT_ENUM_CAST(SteamMultiplayerPeer::LobbyState);
 
 SteamMultiplayerPeer::SteamMultiplayerPeer() :
 		callbackLobbyMessage(this, &SteamMultiplayerPeer::lobby_message_scb),
@@ -273,9 +273,9 @@ int32_t SteamMultiplayerPeer::_get_unique_id() const {
 }
 
 SteamMultiplayerPeer::ConnectionStatus SteamMultiplayerPeer::_get_connection_status() const {
-	if (lobby_state == LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED) {
+	if (lobby_state == LobbyState::LOBBY_STATE_NOT_CONNECTED) {
 		return ConnectionStatus::CONNECTION_DISCONNECTED;
-	} else if (lobby_state == LOBBY_STATE::LOBBY_STATE_CLIENT || lobby_state == LOBBY_STATE::LOBBY_STATE_HOSTING) {
+	} else if (lobby_state == LobbyState::LOBBY_STATE_CLIENT || lobby_state == LobbyState::LOBBY_STATE_HOSTING) {
 		return ConnectionStatus::CONNECTION_CONNECTED;
 	} else {
 		return ConnectionStatus::CONNECTION_CONNECTING;
@@ -341,21 +341,21 @@ void SteamMultiplayerPeer::removed_connection_peer(const CSteamID &steamId) {
 
 Error SteamMultiplayerPeer::create_lobby(Steam::LobbyType lobby_type, int max_players) {
 	ERR_FAIL_COND_V_MSG(SteamMatchmaking() == NULL, ERR_DOES_NOT_EXIST, "`SteamMatchmaking()` is null.");
-	ERR_FAIL_COND_V_MSG(lobby_state != LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT CREATE A LOBBY WHILE IN A LOBBY!");
+	ERR_FAIL_COND_V_MSG(lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT CREATE A LOBBY WHILE IN A LOBBY!");
 
 	SteamAPICall_t api_call = SteamMatchmaking()->CreateLobby((ELobbyType)lobby_type, max_players);
 	callResultCreateLobby.Set(api_call, this, &SteamMultiplayerPeer::lobby_created_scb);
 	unique_id = 1;
-	lobby_state = LOBBY_STATE::LOBBY_STATE_HOST_PENDING;
+	lobby_state = LobbyState::LOBBY_STATE_HOST_PENDING;
 	return OK;
 }
 
 void SteamMultiplayerPeer::lobby_created_scb(LobbyCreated_t *lobby_data, bool io_failure) {
 	if (io_failure) {
-		lobby_state = LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED;
+		lobby_state = LobbyState::LOBBY_STATE_NOT_CONNECTED;
 		Steam::get_singleton()->steamworksError("lobby_created failed? idk wtf is happening");
 	} else {
-		lobby_state = LOBBY_STATE::LOBBY_STATE_HOSTING;
+		lobby_state = LobbyState::LOBBY_STATE_HOSTING;
 		int connect = lobby_data->m_eResult;
 		lobby_id = lobby_data->m_ulSteamIDLobby;
 		uint64 lobby = lobby_id.ConvertToUint64();
@@ -365,10 +365,10 @@ void SteamMultiplayerPeer::lobby_created_scb(LobbyCreated_t *lobby_data, bool io
 
 Error SteamMultiplayerPeer::join_lobby(uint64 lobbyId) {
 	ERR_FAIL_COND_V_MSG(SteamMatchmaking() == NULL, ERR_DOES_NOT_EXIST, "`SteamMatchmaking()` is null.");
-	ERR_FAIL_COND_V_MSG(lobby_state != LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT JOIN A LOBBY WHILE IN A LOBBY!");
+	ERR_FAIL_COND_V_MSG(lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT JOIN A LOBBY WHILE IN A LOBBY!");
 
 	if (SteamMatchmaking() != NULL) {
-		lobby_state = LOBBY_STATE::LOBBY_STATE_CLIENT_PENDING;
+		lobby_state = LobbyState::LOBBY_STATE_CLIENT_PENDING;
 		this->lobby_id = lobbyId;
 		// unique_id = SteamUser()->GetSteamID().GetAccountID();
 		unique_id = generate_unique_id();
@@ -404,16 +404,16 @@ void SteamMultiplayerPeer::lobby_chat_update_scb(LobbyChatUpdate_t *call_data) {
 		return;
 	}
 	CSteamID userChanged = CSteamID(call_data->m_ulSteamIDUserChanged);
-	switch (CHAT_CHANGE(call_data->m_rgfChatMemberStateChange)) {
-		case CHAT_CHANGE::CHAT_CHANGE_ENTERED:
+	switch (ChatChange(call_data->m_rgfChatMemberStateChange)) {
+		case ChatChange::CHAT_CHANGE_ENTERED:
 			if (userChanged != SteamUser()->GetSteamID()) {
 				add_pending_peer(userChanged);
 			}
 			break;
-		case CHAT_CHANGE::CHAT_CHANGE_LEFT:
-		case CHAT_CHANGE::CHAT_CHANGE_DISCONNECTED:
-		case CHAT_CHANGE::CHAT_CHANGE_KICKED:
-		case CHAT_CHANGE::CHAT_CHANGE_BANNED:
+		case ChatChange::CHAT_CHANGE_LEFT:
+		case ChatChange::CHAT_CHANGE_DISCONNECTED:
+		case ChatChange::CHAT_CHANGE_KICKED:
+		case ChatChange::CHAT_CHANGE_BANNED:
 			if (userChanged != SteamUser()->GetSteamID()) {
 				removed_connection_peer(userChanged);
 			}
@@ -470,7 +470,7 @@ void SteamMultiplayerPeer::lobby_joined_scb(LobbyEnter_t *lobbyData) {
 		if (unique_id == 1) {
 			// don't do stuff if you're already the host
 		} else {
-			lobby_state = LOBBY_STATE::LOBBY_STATE_CLIENT;
+			lobby_state = LobbyState::LOBBY_STATE_CLIENT;
 			add_pending_peer(lobby_owner); //frist add the lobby owner
 
 			int count = sm->GetNumLobbyMembers(lobby_id);
@@ -521,7 +521,7 @@ void SteamMultiplayerPeer::lobby_joined_scb(LobbyEnter_t *lobbyData) {
 		};
 		if (output.length() != 0) {
 			ERR_PRINT("Joined lobby failed!" + output);
-			lobby_state = LOBBY_STATE::LOBBY_STATE_NOT_CONNECTED;
+			lobby_state = LobbyState::LOBBY_STATE_NOT_CONNECTED;
 			DEBUG_DATA_SIGNAL_V(output, lobbyData->m_EChatRoomEnterResponse);
 			return;
 		}
