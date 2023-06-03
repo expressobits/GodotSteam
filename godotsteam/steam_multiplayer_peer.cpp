@@ -2,7 +2,7 @@
 // #include "core/io/json.h"
 #include "godotsteam.h"
 
-VARIANT_ENUM_CAST(SteamMultiplayerPeer::ChatChange);
+VARIANT_ENUM_CAST(ChatChange);
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::LobbyState);
 
 SteamMultiplayerPeer::SteamMultiplayerPeer() :
@@ -207,7 +207,7 @@ void SteamMultiplayerPeer::_poll() {
 		auto a = PingPayload();
 		for (auto E = connections_by_steamId64.begin(); E != connections_by_steamId64.end(); ++E) {
 			auto key = E->first;
-			Ref<SteamMultiplayerPeer::ConnectionData> value = E->second;
+			Ref<ConnectionData> value = E->second;
 			auto t = value->last_msg_timestamp + MAX_TIME_WITHOUT_MESSAGE; // pretty sure this will wrap. Should I fix this?
 			
 			if (value->peer_id == -1 || t < Time::get_singleton()->get_ticks_msec()) {
@@ -308,7 +308,10 @@ void SteamMultiplayerPeer::set_steam_id_peer(CSteamID steamId, int peer_id) {
 	}
 }
 
-Ref<SteamMultiplayerPeer::ConnectionData> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
+void ConnectionData::_bind_methods() {
+}
+
+Ref<ConnectionData> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
 	if (peerId_to_steamId.find(peer_id) == peerId_to_steamId.end()) {
 		return peerId_to_steamId[peer_id];
 	}

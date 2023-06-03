@@ -20,6 +20,7 @@ void initialize_godotsteam(ModuleInitializationLevel level){
 		SteamPtr = memnew(Steam);
 		Engine::get_singleton()->register_singleton("Steam", Steam::get_singleton());
 		ClassDB::register_class<SteamMultiplayerPeer>();
+		ClassDB::register_class<ConnectionData>();
 	}
 }
 
