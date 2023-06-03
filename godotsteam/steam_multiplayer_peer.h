@@ -3,15 +3,12 @@
 
 // Include Godot headers
 #include <godot_cpp/classes/multiplayer_peer_extension.hpp>
-
-// Steam APIs
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/templates/hash_map.hpp>
+
+// Steam APIs
 #include "godotsteam.h"
-
-// #include "steam_id.h"
-
-#include "map"
 
 #define MAX_TIME_WITHOUT_MESSAGE 1000
 
@@ -266,8 +263,8 @@ public:
 
 	_FORCE_INLINE_ bool _is_active() const { return lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
 
-	std::map<int64_t, Ref<ConnectionData>> connections_by_steamId64;
-	std::map<int, Ref<ConnectionData>> peerId_to_steamId;
+	HashMap<int64_t, Ref<ConnectionData>> connections_by_steamId64;
+	HashMap<int, Ref<ConnectionData>> peerId_to_steamId;
 
 	int get_peer_by_steam_id(CSteamID steamId);
 	CSteamID get_steam_id_by_peer(int peer);
@@ -307,10 +304,8 @@ public:
 		output["unique_id"] = unique_id;
 
 		Array connections;
-		std::map<int64_t, godot::Ref<ConnectionData>>::iterator it = connections_by_steamId64.begin();
-		while(it != connections_by_steamId64.end())
-		{
-			auto qwer = it->second->collect_debug_data();
+		for (auto E = connections_by_steamId64.begin(); E; ++E) {
+			auto qwer = E->value->collect_debug_data();
 			connections.push_back(qwer);
 		}
 		output["connections"] = connections;
