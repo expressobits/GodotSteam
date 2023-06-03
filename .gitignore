@@ -1,4 +1,5 @@
 **/.vs/
+**/.vscode/
 **/*.sdf
 **/*.VC.opendb
 **/Debug/
@@ -10,3 +11,5 @@
 
 bin/
 .sconsign.dblite
+godotsteam/sdk/public
+godotsteam/sdk/redistributable_bin
