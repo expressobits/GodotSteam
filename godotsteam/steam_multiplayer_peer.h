@@ -16,8 +16,12 @@
 Dictionary steamIdToDict(CSteamID input);
 
 class SteamMultiplayerPeer : public MultiplayerPeerExtension {
-public:
 	GDCLASS(SteamMultiplayerPeer, MultiplayerPeerExtension);
+
+private:
+	_FORCE_INLINE_ bool _is_active() const { return lobby_id != CSteamID() && lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
+
+public:
 	static String convertEResultToString(EResult e);
 
 	Dictionary get_peer_info(int i);
@@ -109,8 +113,6 @@ public:
 	SteamConnection::Packet *next_send_packet = new SteamConnection::Packet;
 	SteamConnection::Packet *next_received_packet = new SteamConnection::Packet; // this packet gets deleted at the first get_packet request
 	List<SteamConnection::Packet *> incoming_packets;
-
-	_FORCE_INLINE_ bool _is_active() const { return lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
 
 	HashMap<int64_t, Ref<SteamConnection>> connections_by_steamId64;
 	HashMap<int, Ref<SteamConnection>> peerId_to_steamId;

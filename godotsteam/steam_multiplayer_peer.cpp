@@ -4,25 +4,6 @@
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::ChatChange);
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::LobbyState);
 
-SteamMultiplayerPeer::SteamMultiplayerPeer() :
-		callbackLobbyMessage(this, &SteamMultiplayerPeer::lobby_message_scb),
-		callbackLobbyChatUpdate(this, &SteamMultiplayerPeer::lobby_chat_update_scb),
-		callbackNetworkMessagesSessionRequest(this, &SteamMultiplayerPeer::network_messages_session_request_scb),
-		callbackNetworkMessagesSessionFailed(this, &SteamMultiplayerPeer::network_messages_session_failed_scb),
-		callbackLobbyJoined(this, &SteamMultiplayerPeer::lobby_joined_scb),
-		callbackLobbyDataUpdate(this, &SteamMultiplayerPeer::lobby_data_update_scb) {
-	if (SteamUser() != NULL) {
-		steam_id = SteamUser()->GetSteamID();
-	}
-}
-
-SteamMultiplayerPeer::~SteamMultiplayerPeer() {
-	if (lobby_id != CSteamID()) {
-		SteamMatchmaking()->LeaveLobby(lobby_id);
-		//todo disconnect all connected peers?
-	}
-}
-
 uint64 SteamMultiplayerPeer::get_lobby_id() {
 	return lobby_id.ConvertToUint64();
 }
@@ -158,14 +139,14 @@ void SteamMultiplayerPeer::_set_target_peer(int32_t p_peer_id) {
 };
 
 int32_t SteamMultiplayerPeer::_get_packet_peer() const{
-	ERR_FAIL_COND_V_MSG(_is_active() == false, 1, "The multiplayer instance isn't currently active.");
+	ERR_FAIL_COND_V_MSG(!_is_active(), 1, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, 1, "No packets to get!");
 
 	return connections_by_steamId64[incoming_packets.front()->get()->sender.ConvertToUint64()]->peer_id;
 }
 
 SteamMultiplayerPeer::TransferMode SteamMultiplayerPeer::_get_packet_mode() const {
-	ERR_FAIL_COND_V_MSG(_is_active() == false, TRANSFER_MODE_RELIABLE, "The multiplayer instance isn't currently active.");
+	ERR_FAIL_COND_V_MSG(!_is_active(), TRANSFER_MODE_RELIABLE, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, TRANSFER_MODE_RELIABLE, "No pending packets, cannot get transfer mode!");
 
 	if (incoming_packets.front()->get()->transfer_mode & k_nSteamNetworkingSend_Reliable) {
@@ -176,7 +157,7 @@ SteamMultiplayerPeer::TransferMode SteamMultiplayerPeer::_get_packet_mode() cons
 }
 
 int32_t SteamMultiplayerPeer::_get_packet_channel() const {
-	ERR_FAIL_COND_V_MSG(_is_active() == false, TRANSFER_MODE_RELIABLE, "The multiplayer instance isn't currently active.");
+	ERR_FAIL_COND_V_MSG(!_is_active(), TRANSFER_MODE_RELIABLE, "The multiplayer instance isn't currently active.");
 	ERR_FAIL_COND_V_MSG(incoming_packets.size() == 0, TRANSFER_MODE_RELIABLE, "No pending packets, cannot get channel!");
 
 	return incoming_packets.front()->get()->channel;
@@ -263,12 +244,20 @@ void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
 }
 
 void SteamMultiplayerPeer::_close() {
-	ERR_FAIL_COND_MSG(lobby_id == CSteamID(), "CAN'T LEAVE A LOBBY IF YOUR'E NOT IN ONE!");
+	if (!_is_active()) {
+		return;
+	}
 	SteamMatchmaking()->LeaveLobby(lobby_id);
+	lobby_state = LOBBY_STATE_NOT_CONNECTED;
+	peerId_to_steamId.clear();
+	connections_by_steamId64.clear();
+	lobby_id = CSteamID();
+	lobby_owner = CSteamID();
+	steam_id = CSteamID();
 }
 
 int32_t SteamMultiplayerPeer::_get_unique_id() const {
-	ERR_FAIL_COND_V_MSG(_is_active() == false, 0, "The multiplayer instance isn't currently active.");
+	ERR_FAIL_COND_V_MSG(!_is_active(), 0, "The multiplayer instance isn't currently active.");
 	return unique_id;
 }
 
@@ -827,4 +816,24 @@ Dictionary SteamMultiplayerPeer::get_peer_map() {
 		output[E->value->peer_id] = E->value->steam_id.ConvertToUint64();
 	}
 	return output;
+}
+
+SteamMultiplayerPeer::SteamMultiplayerPeer() :
+		callbackLobbyMessage(this, &SteamMultiplayerPeer::lobby_message_scb),
+		callbackLobbyChatUpdate(this, &SteamMultiplayerPeer::lobby_chat_update_scb),
+		callbackNetworkMessagesSessionRequest(this, &SteamMultiplayerPeer::network_messages_session_request_scb),
+		callbackNetworkMessagesSessionFailed(this, &SteamMultiplayerPeer::network_messages_session_failed_scb),
+		callbackLobbyJoined(this, &SteamMultiplayerPeer::lobby_joined_scb),
+		callbackLobbyDataUpdate(this, &SteamMultiplayerPeer::lobby_data_update_scb) {
+	if (SteamUser() != NULL) {
+		steam_id = SteamUser()->GetSteamID();
+	}
+}
+
+SteamMultiplayerPeer::~SteamMultiplayerPeer() {
+	if (_is_active()) {
+		SteamMatchmaking()->LeaveLobby(lobby_id);
+		_close();
+		//todo disconnect all connected peers?
+	}
 }
