@@ -37,10 +37,10 @@ Error SteamMultiplayerPeer::create_lobby(Steam::LobbyType lobby_type, int max_pl
 	ERR_FAIL_COND_V_MSG(SteamMatchmaking() == NULL, ERR_DOES_NOT_EXIST, "`SteamMatchmaking()` is null.");
 	ERR_FAIL_COND_V_MSG(lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED, ERR_ALREADY_IN_USE, "CANNOT CREATE A LOBBY WHILE IN A LOBBY!");
 
+	lobby_state = LobbyState::LOBBY_STATE_HOST_PENDING;
 	SteamAPICall_t api_call = SteamMatchmaking()->CreateLobby((ELobbyType)lobby_type, max_players);
 	callResultCreateLobby.Set(api_call, this, &SteamMultiplayerPeer::lobby_created_scb);
 	unique_id = 1;
-	lobby_state = LobbyState::LOBBY_STATE_HOST_PENDING;
 	return OK;
 }
 
@@ -60,7 +60,7 @@ Error SteamMultiplayerPeer::join_lobby(uint64 lobbyId) {
 
 #define MAX_MESSAGE_COUNT 255
 void SteamMultiplayerPeer::_poll() {
-	// ERR_FAIL_COND_MSG(!_is_active(), "The multiplayer instance isn't currently active.");
+	ERR_FAIL_COND_MSG(!_is_active(), "The multiplayer instance isn't currently active.");
 	{
 		SteamNetworkingMessage_t *messages[MAX_MESSAGE_COUNT];
 		int count = SteamNetworkingMessages()->ReceiveMessagesOnChannel(SteamConnection::ChannelManagement::SIZE, messages, MAX_MESSAGE_COUNT);
@@ -356,7 +356,7 @@ void SteamMultiplayerPeer::lobby_chat_update_scb(LobbyChatUpdate_t *call_data) {
 	}
 };
 
-//this happens when you recive a message request from someone.
+//This happens when you receive a message request from someone.
 void SteamMultiplayerPeer::network_messages_session_request_scb(SteamNetworkingMessagesSessionRequest_t *t) {
 	DEBUG_CON_DATA_SIGNAL(get_state() != LOBBY_STATE_HOSTING && get_state() != LOBBY_STATE_CLIENT, "RECIVING A CONNECTION BEFORE YOU'RE PROPERLY IN A LOBBY");
 	// search for lobby member
@@ -403,7 +403,7 @@ void SteamMultiplayerPeer::lobby_joined_scb(LobbyEnter_t *lobbyData) {
 			// don't do stuff if you're already the host
 		} else {
 			lobby_state = LobbyState::LOBBY_STATE_CLIENT;
-			add_pending_peer(lobby_owner); //frist add the lobby owner
+			add_pending_peer(lobby_owner); // first add the lobby owner
 
 			int count = sm->GetNumLobbyMembers(lobby_id);
 			for (int i = 0; i < count; i++) {
@@ -467,266 +467,6 @@ Dictionary steamIdToDict(CSteamID input) {
 	output["GetEAccountType"] = input.GetEAccountType();
 	output["GetEUniverse"] = input.GetEUniverse();
 	return output;
-}
-
-String SteamMultiplayerPeer::convertEResultToString(EResult e) {
-	switch (e) {
-		case k_EResultNone:
-			return String("k_EResultNone");
-		case k_EResultOK:
-			return String("k_EResultOK");
-		case k_EResultFail:
-			return String("k_EResultFail");
-		case k_EResultNoConnection:
-			return String("k_EResultNoConnection");
-		case k_EResultInvalidPassword:
-			return String("k_EResultInvalidPassword");
-		case k_EResultLoggedInElsewhere:
-			return String("k_EResultLoggedInElsewhere");
-		case k_EResultInvalidProtocolVer:
-			return String("k_EResultInvalidProtocolVer");
-		case k_EResultInvalidParam:
-			return String("k_EResultInvalidParam");
-		case k_EResultFileNotFound:
-			return String("k_EResultFileNotFound");
-		case k_EResultBusy:
-			return String("k_EResultBusy");
-		case k_EResultInvalidState:
-			return String("k_EResultInvalidState");
-		case k_EResultInvalidName:
-			return String("k_EResultInvalidName");
-		case k_EResultInvalidEmail:
-			return String("k_EResultInvalidEmail");
-		case k_EResultDuplicateName:
-			return String("k_EResultDuplicateName");
-		case k_EResultAccessDenied:
-			return String("k_EResultAccessDenied");
-		case k_EResultTimeout:
-			return String("k_EResultTimeout");
-		case k_EResultBanned:
-			return String("k_EResultBanned");
-		case k_EResultAccountNotFound:
-			return String("k_EResultAccountNotFound");
-		case k_EResultInvalidSteamID:
-			return String("k_EResultInvalidSteamID");
-		case k_EResultServiceUnavailable:
-			return String("k_EResultServiceUnavailable");
-		case k_EResultNotLoggedOn:
-			return String("k_EResultNotLoggedOn");
-		case k_EResultPending:
-			return String("k_EResultPending");
-		case k_EResultEncryptionFailure:
-			return String("k_EResultEncryptionFailure");
-		case k_EResultInsufficientPrivilege:
-			return String("k_EResultInsufficientPrivilege");
-		case k_EResultLimitExceeded:
-			return String("k_EResultLimitExceeded");
-		case k_EResultRevoked:
-			return String("k_EResultRevoked");
-		case k_EResultExpired:
-			return String("k_EResultExpired");
-		case k_EResultAlreadyRedeemed:
-			return String("k_EResultAlreadyRedeemed");
-		case k_EResultDuplicateRequest:
-			return String("k_EResultDuplicateRequest");
-		case k_EResultAlreadyOwned:
-			return String("k_EResultAlreadyOwned");
-		case k_EResultIPNotFound:
-			return String("k_EResultIPNotFound");
-		case k_EResultPersistFailed:
-			return String("k_EResultPersistFailed");
-		case k_EResultLockingFailed:
-			return String("k_EResultLockingFailed");
-		case k_EResultLogonSessionReplaced:
-			return String("k_EResultLogonSessionReplaced");
-		case k_EResultConnectFailed:
-			return String("k_EResultConnectFailed");
-		case k_EResultHandshakeFailed:
-			return String("k_EResultHandshakeFailed");
-		case k_EResultIOFailure:
-			return String("k_EResultIOFailure");
-		case k_EResultRemoteDisconnect:
-			return String("k_EResultRemoteDisconnect");
-		case k_EResultShoppingCartNotFound:
-			return String("k_EResultShoppingCartNotFound");
-		case k_EResultBlocked:
-			return String("k_EResultBlocked");
-		case k_EResultIgnored:
-			return String("k_EResultIgnored");
-		case k_EResultNoMatch:
-			return String("k_EResultNoMatch");
-		case k_EResultAccountDisabled:
-			return String("k_EResultAccountDisabled");
-		case k_EResultServiceReadOnly:
-			return String("k_EResultServiceReadOnly");
-		case k_EResultAccountNotFeatured:
-			return String("k_EResultAccountNotFeatured");
-		case k_EResultAdministratorOK:
-			return String("k_EResultAdministratorOK");
-		case k_EResultContentVersion:
-			return String("k_EResultContentVersion");
-		case k_EResultTryAnotherCM:
-			return String("k_EResultTryAnotherCM");
-		case k_EResultPasswordRequiredToKickSession:
-			return String("k_EResultPasswordRequiredToKickSession");
-		case k_EResultAlreadyLoggedInElsewhere:
-			return String("k_EResultAlreadyLoggedInElsewhere");
-		case k_EResultSuspended:
-			return String("k_EResultSuspended");
-		case k_EResultCancelled:
-			return String("k_EResultCancelled");
-		case k_EResultDataCorruption:
-			return String("k_EResultDataCorruption");
-		case k_EResultDiskFull:
-			return String("k_EResultDiskFull");
-		case k_EResultRemoteCallFailed:
-			return String("k_EResultRemoteCallFailed");
-		case k_EResultPasswordUnset:
-			return String("k_EResultPasswordUnset");
-		case k_EResultExternalAccountUnlinked:
-			return String("k_EResultExternalAccountUnlinked");
-		case k_EResultPSNTicketInvalid:
-			return String("k_EResultPSNTicketInvalid");
-		case k_EResultExternalAccountAlreadyLinked:
-			return String("k_EResultExternalAccountAlreadyLinked");
-		case k_EResultRemoteFileConflict:
-			return String("k_EResultRemoteFileConflict");
-		case k_EResultIllegalPassword:
-			return String("k_EResultIllegalPassword");
-		case k_EResultSameAsPreviousValue:
-			return String("k_EResultSameAsPreviousValue");
-		case k_EResultAccountLogonDenied:
-			return String("k_EResultAccountLogonDenied");
-		case k_EResultCannotUseOldPassword:
-			return String("k_EResultCannotUseOldPassword");
-		case k_EResultInvalidLoginAuthCode:
-			return String("k_EResultInvalidLoginAuthCode");
-		case k_EResultAccountLogonDeniedNoMail:
-			return String("k_EResultAccountLogonDeniedNoMail");
-		case k_EResultHardwareNotCapableOfIPT:
-			return String("k_EResultHardwareNotCapableOfIPT");
-		case k_EResultIPTInitError:
-			return String("k_EResultIPTInitError");
-		case k_EResultParentalControlRestricted:
-			return String("k_EResultParentalControlRestricted");
-		case k_EResultFacebookQueryError:
-			return String("k_EResultFacebookQueryError");
-		case k_EResultExpiredLoginAuthCode:
-			return String("k_EResultExpiredLoginAuthCode");
-		case k_EResultIPLoginRestrictionFailed:
-			return String("k_EResultIPLoginRestrictionFailed");
-		case k_EResultAccountLockedDown:
-			return String("k_EResultAccountLockedDown");
-		case k_EResultAccountLogonDeniedVerifiedEmailRequired:
-			return String("k_EResultAccountLogonDeniedVerifiedEmailRequired");
-		case k_EResultNoMatchingURL:
-			return String("k_EResultNoMatchingURL");
-		case k_EResultBadResponse:
-			return String("k_EResultBadResponse");
-		case k_EResultRequirePasswordReEntry:
-			return String("k_EResultRequirePasswordReEntry");
-		case k_EResultValueOutOfRange:
-			return String("k_EResultValueOutOfRange");
-		case k_EResultUnexpectedError:
-			return String("k_EResultUnexpectedError");
-		case k_EResultDisabled:
-			return String("k_EResultDisabled");
-		case k_EResultInvalidCEGSubmission:
-			return String("k_EResultInvalidCEGSubmission");
-		case k_EResultRestrictedDevice:
-			return String("k_EResultRestrictedDevice");
-		case k_EResultRegionLocked:
-			return String("k_EResultRegionLocked");
-		case k_EResultRateLimitExceeded:
-			return String("k_EResultRateLimitExceeded");
-		case k_EResultAccountLoginDeniedNeedTwoFactor:
-			return String("k_EResultAccountLoginDeniedNeedTwoFactor");
-		case k_EResultItemDeleted:
-			return String("k_EResultItemDeleted");
-		case k_EResultAccountLoginDeniedThrottle:
-			return String("k_EResultAccountLoginDeniedThrottle");
-		case k_EResultTwoFactorCodeMismatch:
-			return String("k_EResultTwoFactorCodeMismatch");
-		case k_EResultTwoFactorActivationCodeMismatch:
-			return String("k_EResultTwoFactorActivationCodeMismatch");
-		case k_EResultAccountAssociatedToMultiplePartners:
-			return String("k_EResultAccountAssociatedToMultiplePartners");
-		case k_EResultNotModified:
-			return String("k_EResultNotModified");
-		case k_EResultNoMobileDevice:
-			return String("k_EResultNoMobileDevice");
-		case k_EResultTimeNotSynced:
-			return String("k_EResultTimeNotSynced");
-		case k_EResultSmsCodeFailed:
-			return String("k_EResultSmsCodeFailed");
-		case k_EResultAccountLimitExceeded:
-			return String("k_EResultAccountLimitExceeded");
-		case k_EResultAccountActivityLimitExceeded:
-			return String("k_EResultAccountActivityLimitExceeded");
-		case k_EResultPhoneActivityLimitExceeded:
-			return String("k_EResultPhoneActivityLimitExceeded");
-		case k_EResultRefundToWallet:
-			return String("k_EResultRefundToWallet");
-		case k_EResultEmailSendFailure:
-			return String("k_EResultEmailSendFailure");
-		case k_EResultNotSettled:
-			return String("k_EResultNotSettled");
-		case k_EResultNeedCaptcha:
-			return String("k_EResultNeedCaptcha");
-		case k_EResultGSLTDenied:
-			return String("k_EResultGSLTDenied");
-		case k_EResultGSOwnerDenied:
-			return String("k_EResultGSOwnerDenied");
-		case k_EResultInvalidItemType:
-			return String("k_EResultInvalidItemType");
-		case k_EResultIPBanned:
-			return String("k_EResultIPBanned");
-		case k_EResultGSLTExpired:
-			return String("k_EResultGSLTExpired");
-		case k_EResultInsufficientFunds:
-			return String("k_EResultInsufficientFunds");
-		case k_EResultTooManyPending:
-			return String("k_EResultTooManyPending");
-		case k_EResultNoSiteLicensesFound:
-			return String("k_EResultNoSiteLicensesFound");
-		case k_EResultWGNetworkSendExceeded:
-			return String("k_EResultWGNetworkSendExceeded");
-		case k_EResultAccountNotFriends:
-			return String("k_EResultAccountNotFriends");
-		case k_EResultLimitedUserAccount:
-			return String("k_EResultLimitedUserAccount");
-		case k_EResultCantRemoveItem:
-			return String("k_EResultCantRemoveItem");
-		case k_EResultAccountDeleted:
-			return String("k_EResultAccountDeleted");
-		case k_EResultExistingUserCancelledLicense:
-			return String("k_EResultExistingUserCancelledLicense");
-		case k_EResultCommunityCooldown:
-			return String("k_EResultCommunityCooldown");
-		case k_EResultNoLauncherSpecified:
-			return String("k_EResultNoLauncherSpecified");
-		case k_EResultMustAgreeToSSA:
-			return String("k_EResultMustAgreeToSSA");
-		case k_EResultLauncherMigrated:
-			return String("k_EResultLauncherMigrated");
-		case k_EResultSteamRealmMismatch:
-			return String("k_EResultSteamRealmMismatch");
-		case k_EResultInvalidSignature:
-			return String("k_EResultInvalidSignature");
-		case k_EResultParseFailure:
-			return String("k_EResultParseFailure");
-		case k_EResultNoVerifiedPhone:
-			return String("k_EResultNoVerifiedPhone");
-		case k_EResultInsufficientBattery:
-			return String("k_EResultInsufficientBattery");
-		case k_EResultChargerRequired:
-			return String("k_EResultChargerRequired");
-		case k_EResultCachedCredentialInvalid:
-			return String("k_EResultCachedCredentialInvalid");
-		case K_EResultPhoneNumberIsVOIP:
-			return String("K_EResultPhoneNumberIsVOIP");
-	}
-	return String("unmatched");
 }
 
 Dictionary SteamMultiplayerPeer::get_peer_info(int i) {
