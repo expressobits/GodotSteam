@@ -2,7 +2,7 @@
 // #include "core/io/json.h"
 #include "godotsteam.h"
 
-VARIANT_ENUM_CAST(ChatChange);
+VARIANT_ENUM_CAST(SteamMultiplayerPeer::ChatChange);
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::LobbyState);
 
 SteamMultiplayerPeer::SteamMultiplayerPeer() :
@@ -127,12 +127,12 @@ int SteamMultiplayerPeer::_get_steam_transfer_flag() {
 
 Error SteamMultiplayerPeer::_put_packet(const uint8_t *p_buffer, int32_t p_buffer_size) {
 	int transferMode = _get_steam_transfer_flag();
-	auto channel = get_transfer_channel() + CHANNEL_MANAGEMENT::SIZE;
+	auto channel = get_transfer_channel() + SteamConnection::ChannelManagement::SIZE;
 
 	if (target_peer == 0) { // send to ALL
 		auto returnValue = OK;
 		for (auto E = connections_by_steamId64.begin(); E; ++E) {
-			auto packet = new Packet(p_buffer, p_buffer_size, transferMode, channel);
+			auto packet = new SteamConnection::Packet(p_buffer, p_buffer_size, transferMode, channel);
 			auto errorCode = E->value->send(packet);
 			if (errorCode != OK) {
 				DEBUG_DATA_SIGNAL_V("put_packet failed!", errorCode);
@@ -141,7 +141,7 @@ Error SteamMultiplayerPeer::_put_packet(const uint8_t *p_buffer, int32_t p_buffe
 		}
 		return returnValue;
 	} else {
-		auto packet = new Packet(p_buffer, p_buffer_size, transferMode, channel);
+		auto packet = new SteamConnection::Packet(p_buffer, p_buffer_size, transferMode, channel);
 		return get_connection_by_peer(target_peer)->send(packet);
 	}
 }
@@ -196,7 +196,7 @@ bool SteamMultiplayerPeer::_is_server() const {
 void SteamMultiplayerPeer::_poll() {
 	{
 		SteamNetworkingMessage_t *messages[MAX_MESSAGE_COUNT];
-		int count = SteamNetworkingMessages()->ReceiveMessagesOnChannel(CHANNEL_MANAGEMENT::SIZE, messages, MAX_MESSAGE_COUNT);
+		int count = SteamNetworkingMessages()->ReceiveMessagesOnChannel(SteamConnection::ChannelManagement::SIZE, messages, MAX_MESSAGE_COUNT);
 		for (int i = 0; i < count; i++) {
 			auto msg = messages[i];
 			process_message(msg);
@@ -204,10 +204,10 @@ void SteamMultiplayerPeer::_poll() {
 		}
 	}
 	{
-		auto a = PingPayload();
+		auto a = SteamConnection::PingPayload();
 		for (auto E = connections_by_steamId64.begin(); E; ++E) {
 			auto key = E->key;
-			Ref<ConnectionData> value = E->value;
+			Ref<SteamConnection> value = E->value;
 			auto t = value->last_msg_timestamp + MAX_TIME_WITHOUT_MESSAGE; // pretty sure this will wrap. Should I fix this?
 			
 			if (value->peer_id == -1 || t < Time::get_singleton()->get_ticks_msec()) {
@@ -217,7 +217,7 @@ void SteamMultiplayerPeer::_poll() {
 	}
 	{
 		SteamNetworkingMessage_t *messages[MAX_MESSAGE_COUNT];
-		int count = SteamNetworkingMessages()->ReceiveMessagesOnChannel(CHANNEL_MANAGEMENT::PING_CHANNEL, messages, MAX_MESSAGE_COUNT);
+		int count = SteamNetworkingMessages()->ReceiveMessagesOnChannel(SteamConnection::ChannelManagement::PING_CHANNEL, messages, MAX_MESSAGE_COUNT);
 		for (int i = 0; i < count; i++) {
 			auto msg = messages[i];
 			process_ping(msg);
@@ -229,7 +229,7 @@ void SteamMultiplayerPeer::_poll() {
 void SteamMultiplayerPeer::process_message(const SteamNetworkingMessage_t *msg) {
 	ERR_FAIL_COND_MSG(msg->GetSize() > MAX_STEAM_PACKET_SIZE, "PACKET TOO LARGE!");
 
-	auto packet = new Packet;
+	auto packet = new SteamConnection::Packet;
 	packet->channel = 0;
 	packet->sender = msg->m_identityPeer.GetSteamID();
 	packet->size = msg->GetSize();
@@ -239,14 +239,14 @@ void SteamMultiplayerPeer::process_message(const SteamNetworkingMessage_t *msg) 
 	incoming_packets.push_back(packet);
 }
 void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
-	if (sizeof(PingPayload) != msg->GetSize()) {
+	if (sizeof(SteamConnection::PingPayload) != msg->GetSize()) {
 		Steam::get_singleton()->steamworksError("wrong size of payload");
 		return;
 	}
-	auto data = (PingPayload *)msg->GetData();
+	auto data = (SteamConnection::PingPayload *)msg->GetData();
 	if (data->peer_id == -1) {
 		// respond to ping
-		auto p = PingPayload();
+		auto p = SteamConnection::PingPayload();
 		p.peer_id = unique_id;
 		p.steam_id = SteamUser()->GetSteamID();
 		auto err = connections_by_steamId64[msg->m_identityPeer.GetSteamID64()]->ping(p);
@@ -308,10 +308,7 @@ void SteamMultiplayerPeer::set_steam_id_peer(CSteamID steamId, int peer_id) {
 	}
 }
 
-void ConnectionData::_bind_methods() {
-}
-
-Ref<ConnectionData> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
+Ref<SteamConnection> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
 	if (peerId_to_steamId.has(peer_id)) {
 		return peerId_to_steamId[peer_id];
 	}
@@ -321,7 +318,7 @@ Ref<ConnectionData> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
 void SteamMultiplayerPeer::add_connection_peer(const CSteamID &steamId, int peer_id) {
 	ERR_FAIL_COND_MSG(steamId == SteamUser()->GetSteamID(), "YOU CANNOT ADD A PEER THAT IS YOU!");
 
-	Ref<ConnectionData> connectionData = Ref<ConnectionData>(memnew(ConnectionData(steamId)));
+	Ref<SteamConnection> connectionData = Ref<SteamConnection>(memnew(SteamConnection(steamId)));
 	connections_by_steamId64[steamId.ConvertToUint64()] = connectionData;
 	auto a = connectionData->ping();
 	if (a != OK) {
@@ -385,7 +382,7 @@ void SteamMultiplayerPeer::lobby_message_scb(LobbyChatMsg_t *call_data) {
 		DEBUG_DATA_SIGNAL("lobby_message_scb: recived message on that isn't for this lobby?");
 		return;
 	}
-	Packet *packet = new Packet;
+	SteamConnection::Packet *packet = new SteamConnection::Packet;
 
 	packet->sender = call_data->m_ulSteamIDUser;
 	if (SteamUser()->GetSteamID() == packet->sender) {

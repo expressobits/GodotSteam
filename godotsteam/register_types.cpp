@@ -8,6 +8,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "godotsteam.h"
+#include "steam_connection.h"
 #include "steam_multiplayer_peer.h"
 
 using namespace godot;
@@ -20,7 +21,7 @@ void initialize_godotsteam(ModuleInitializationLevel level){
 		SteamPtr = memnew(Steam);
 		Engine::get_singleton()->register_singleton("Steam", Steam::get_singleton());
 		ClassDB::register_class<SteamMultiplayerPeer>();
-		ClassDB::register_class<ConnectionData>();
+		ClassDB::register_class<SteamConnection>();
 	}
 }
 

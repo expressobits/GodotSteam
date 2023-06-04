@@ -9,169 +9,11 @@
 
 // Steam APIs
 #include "godotsteam.h"
+#include "steam_connection.h"
 
 #define MAX_TIME_WITHOUT_MESSAGE 1000
 
 Dictionary steamIdToDict(CSteamID input);
-
-enum CHANNEL_MANAGEMENT {
-	PING_CHANNEL,
-	SIZE
-};
-
-enum ChatChange {
-	CHAT_CHANGE_ENTERED = k_EChatMemberStateChangeEntered,
-	CHAT_CHANGE_LEFT = k_EChatMemberStateChangeLeft,
-	CHAT_CHANGE_DISCONNECTED = k_EChatMemberStateChangeDisconnected,
-	CHAT_CHANGE_KICKED = k_EChatMemberStateChangeKicked,
-	CHAT_CHANGE_BANNED = k_EChatMemberStateChangeBanned
-};
-
-struct Packet {
-	uint8_t data[MAX_STEAM_PACKET_SIZE];
-	uint32_t size = 0;
-	CSteamID sender = CSteamID();
-	int channel = 0;
-	int transfer_mode = k_nSteamNetworkingSend_Reliable;
-	Packet() {}
-	Packet(const void *p_buffer, uint32 p_buffer_size, int transferMode, int channel) {
-		ERR_FAIL_COND_MSG(p_buffer_size > MAX_STEAM_PACKET_SIZE, "ERROR TRIED TO SEND A PACKET LARGER THAN MAX_STEAM_PACKET_SIZE");
-		memcpy(this->data, p_buffer, p_buffer_size);
-		this->size = p_buffer_size;
-		this->sender = CSteamID();
-		this->channel = channel;
-		this->transfer_mode = transferMode;
-	}
-};
-
-
-struct PingPayload {
-	int peer_id = -1;
-	CSteamID steam_id = CSteamID();
-};
-
-class ConnectionData : public RefCounted {
-	GDCLASS(ConnectionData, RefCounted);
-
-public:
-	int peer_id;
-	CSteamID steam_id;
-	uint64_t last_msg_timestamp;
-	SteamNetworkingIdentity networkIdentity;
-	List<Packet *> pending_retry_packets;
-
-	ConnectionData(CSteamID steamId) {
-		this->peer_id = -1;
-		this->steam_id = steamId;
-		this->last_msg_timestamp = 0;
-		networkIdentity = SteamNetworkingIdentity();
-		networkIdentity.SetSteamID(steamId);
-	}
-	ConnectionData(){};
-	~ConnectionData() {
-		SteamNetworkingMessages()->CloseSessionWithUser(networkIdentity);
-		while (pending_retry_packets.size()) {
-			delete pending_retry_packets.front()->get();
-			pending_retry_packets.pop_front();
-		}
-	}
-	static void _bind_methods();
-	bool operator==(const ConnectionData &data) {
-		return steam_id == data.steam_id;
-	}
-	EResult rawSend(Packet *packet) {
-		if (packet->channel == CHANNEL_MANAGEMENT::PING_CHANNEL) {
-			if (packet->size != sizeof(PingPayload)) {
-				Steam::get_singleton()->steamworksError("THIS PING IS THE WRONG SIZE, REJECTING!");
-				return k_EResultFail;
-			}
-		}
-		return SteamNetworkingMessages()->SendMessageToUser(networkIdentity, packet->data, packet->size, packet->transfer_mode, packet->channel);
-	}
-	Error sendPending() {
-		while (pending_retry_packets.size() != 0) {
-			auto packet = pending_retry_packets.front()->get();
-			auto errorCode = rawSend(packet);
-			if (errorCode == k_EResultOK) {
-				delete packet;
-				pending_retry_packets.pop_front();
-			} else {
-				auto errorString = "";//SteamMultiplayerPeer::convertEResultToString(errorCode);
-				if (packet->transfer_mode & k_nSteamNetworkingSend_Reliable) {
-					WARN_PRINT(String("Send Error! (reliable: will retry):") + errorString);
-					break;
-					//break and try resend later
-				} else {
-					WARN_PRINT(String("Send Error! (unreliable: won't retry):") + errorString);
-					delete packet;
-					pending_retry_packets.pop_front();
-					//toss the unreliable packet and move on?
-				}
-			}
-		}
-		return OK;
-	}
-
-	void addPacket(Packet *packet) {
-		pending_retry_packets.push_back(packet);
-	}
-	Error send(Packet *packet) {
-		addPacket(packet);
-		return sendPending();
-	}
-	Error ping(const PingPayload &p) {
-		last_msg_timestamp = Time::get_singleton()->get_ticks_msec(); // only ping once per maxDeltaT;
-
-		auto packet = new Packet((void *)&p, sizeof(PingPayload), MultiplayerPeer::TRANSFER_MODE_RELIABLE, PING_CHANNEL);
-		return send(packet);
-	}
-	Error ping() {
-		auto p = PingPayload();
-		return ping(p);
-	}
-	Dictionary collect_debug_data() {
-		Dictionary output;
-		output["peer_id"] = peer_id;
-		output["steam_id"] = steam_id.GetAccountID();
-		output["pending_packet_count"] = pending_retry_packets.size();
-		SteamNetConnectionRealTimeStatus_t info;
-		SteamNetworkingMessages()->GetSessionConnectionInfo(networkIdentity, nullptr, &info);
-		switch (info.m_eState) {
-			case k_ESteamNetworkingConnectionState_None:
-				output["connection_status"] = "None";
-				break;
-			case k_ESteamNetworkingConnectionState_Connecting:
-				output["connection_status"] = "Connecting";
-				break;
-			case k_ESteamNetworkingConnectionState_FindingRoute:
-				output["connection_status"] = "FindingRoute";
-				break;
-			case k_ESteamNetworkingConnectionState_Connected:
-				output["connection_status"] = "Connected";
-				break;
-			case k_ESteamNetworkingConnectionState_ClosedByPeer:
-				output["connection_status"] = "ClosedByPeer";
-				break;
-			case k_ESteamNetworkingConnectionState_ProblemDetectedLocally:
-				output["connection_status"] = "ProblemDetectedLocally";
-				break;
-		}
-		output["packets_per_sec"] = info.m_flOutPacketsPerSec;
-		output["bytes_per_sec"] = info.m_flOutBytesPerSec;
-		output["packets_per_sec"] = info.m_flInPacketsPerSec;
-		output["bytes_per_sec"] = info.m_flInBytesPerSec;
-		output["connection_quality_local"] = info.m_flConnectionQualityLocal;
-		output["connection_quality_remote"] = info.m_flConnectionQualityRemote;
-		output["send_rate_bytes_per_second"] = info.m_nSendRateBytesPerSecond;
-		output["pending_unreliable"] = info.m_cbPendingUnreliable;
-		output["pending_reliable"] = info.m_cbPendingReliable;
-		output["sent_unacked_reliable"] = info.m_cbSentUnackedReliable;
-		output["queue_time"] = info.m_usecQueueTime;
-
-		output["ping"] = info.m_nPing;
-		return output;
-	}
-};
 
 class SteamMultiplayerPeer : public MultiplayerPeerExtension {
 public:
@@ -218,6 +60,13 @@ public:
 	virtual bool _is_server_relay_supported() const override;
 	virtual MultiplayerPeer::ConnectionStatus _get_connection_status() const override;
 
+	enum ChatChange {
+		CHAT_CHANGE_ENTERED = k_EChatMemberStateChangeEntered,
+		CHAT_CHANGE_LEFT = k_EChatMemberStateChangeLeft,
+		CHAT_CHANGE_DISCONNECTED = k_EChatMemberStateChangeDisconnected,
+		CHAT_CHANGE_KICKED = k_EChatMemberStateChangeKicked,
+		CHAT_CHANGE_BANNED = k_EChatMemberStateChangeBanned
+	};
 
 	// all SteamGodot from here on down
 	enum LobbyState {
@@ -257,19 +106,19 @@ public:
 	// TransferMode transfer_mode = TransferMode::TRANSFER_MODE_RELIABLE;
 
 	
-	Packet *next_send_packet = new Packet;
-	Packet *next_received_packet = new Packet; // this packet gets deleted at the first get_packet request
-	List<Packet *> incoming_packets;
+	SteamConnection::Packet *next_send_packet = new SteamConnection::Packet;
+	SteamConnection::Packet *next_received_packet = new SteamConnection::Packet; // this packet gets deleted at the first get_packet request
+	List<SteamConnection::Packet *> incoming_packets;
 
 	_FORCE_INLINE_ bool _is_active() const { return lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
 
-	HashMap<int64_t, Ref<ConnectionData>> connections_by_steamId64;
-	HashMap<int, Ref<ConnectionData>> peerId_to_steamId;
+	HashMap<int64_t, Ref<SteamConnection>> connections_by_steamId64;
+	HashMap<int, Ref<SteamConnection>> peerId_to_steamId;
 
 	int get_peer_by_steam_id(CSteamID steamId);
 	CSteamID get_steam_id_by_peer(int peer);
 	void set_steam_id_peer(CSteamID steamId, int peer_id);
-	Ref<ConnectionData> get_connection_by_peer(int peer_id);
+	Ref<SteamConnection> get_connection_by_peer(int peer_id);
 
 	void add_connection_peer(const CSteamID &steamId, int peer_id);
 	void add_pending_peer(const CSteamID &steamId);
