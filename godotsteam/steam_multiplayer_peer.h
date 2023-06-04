@@ -19,7 +19,7 @@ class SteamMultiplayerPeer : public MultiplayerPeerExtension {
 	GDCLASS(SteamMultiplayerPeer, MultiplayerPeerExtension);
 
 private:
-	_FORCE_INLINE_ bool _is_active() const { return lobby_id != CSteamID() && lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
+	_FORCE_INLINE_ bool _is_active() const { return lobby_state != LobbyState::LOBBY_STATE_NOT_CONNECTED; }
 
 public:
 	static String convertEResultToString(EResult e);

@@ -835,7 +835,6 @@ SteamMultiplayerPeer::SteamMultiplayerPeer() :
 
 SteamMultiplayerPeer::~SteamMultiplayerPeer() {
 	if (_is_active()) {
-		SteamMatchmaking()->LeaveLobby(lobby_id);
 		_close();
 		//todo disconnect all connected peers?
 	}
