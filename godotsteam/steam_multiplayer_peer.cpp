@@ -1,5 +1,4 @@
 #include "steam_multiplayer_peer.h"
-// #include "core/io/json.h"
 #include "godotsteam.h"
 
 VARIANT_ENUM_CAST(SteamMultiplayerPeer::ChatChange);
@@ -238,6 +237,7 @@ void SteamMultiplayerPeer::process_message(const SteamNetworkingMessage_t *msg) 
 	memcpy(packet->data, rawData, packet->size);
 	incoming_packets.push_back(packet);
 }
+
 void SteamMultiplayerPeer::process_ping(const SteamNetworkingMessage_t *msg) {
 	if (sizeof(SteamConnection::PingPayload) != msg->GetSize()) {
 		Steam::get_singleton()->steamworksError("wrong size of payload");
