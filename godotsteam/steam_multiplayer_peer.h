@@ -54,6 +54,11 @@ public:
 	virtual int32_t _get_max_packet_size() const override;
 	virtual int32_t _get_packet_channel() const override;
 	virtual MultiplayerPeer::TransferMode _get_packet_mode() const override;
+	// TODO Channels
+	// virtual void _set_transfer_channel(int32_t p_channel);
+	// virtual int32_t _get_transfer_channel() const;
+	// virtual void _set_transfer_mode(MultiplayerPeer::TransferMode p_mode);
+	// virtual MultiplayerPeer::TransferMode _get_transfer_mode() const;
 	virtual void _set_target_peer(int32_t p_peer_id) override;
 	virtual int32_t _get_packet_peer() const override;
 	virtual bool _is_server() const override;
@@ -198,7 +203,7 @@ public:
 	}
 };
 
-// todo: make these empty for release builds
+// TODO: make these empty for release builds
 #define DEBUG_DATA_SIGNAL_V(msg, value) \
 	{                                   \
 		Dictionary a;                   \
