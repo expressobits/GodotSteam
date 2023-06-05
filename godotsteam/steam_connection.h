@@ -60,6 +60,8 @@ public:
 	Error ping();
 	Dictionary collect_debug_data();
 
+    String convert_eresult_to_string(EResult e);
+
     SteamConnection(CSteamID steamId);
 	SteamConnection(){};
 	~SteamConnection();
