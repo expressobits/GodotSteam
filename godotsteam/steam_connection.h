@@ -52,9 +52,9 @@ protected:
 
 public:
 	bool operator==(const SteamConnection &data);
-	EResult rawSend(Packet *packet);
-	Error sendPending();
-	void addPacket(Packet *packet);
+	EResult raw_send(Packet *packet);
+	Error send_pending();
+	void add_packet(Packet *packet);
 	Error send(Packet *packet);
 	Error ping(const PingPayload &p);
 	Error ping();

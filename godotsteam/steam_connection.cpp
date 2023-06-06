@@ -7,7 +7,7 @@ bool SteamConnection::operator==(const SteamConnection &data) {
     return steam_id == data.steam_id;
 }
 
-EResult SteamConnection::rawSend(Packet *packet) {
+EResult SteamConnection::raw_send(Packet *packet) {
     if (packet->channel == ChannelManagement::PING_CHANNEL) {
         if (packet->size != sizeof(PingPayload)) {
             Steam::get_singleton()->steamworksError("THIS PING IS THE WRONG SIZE, REJECTING!");
@@ -17,10 +17,10 @@ EResult SteamConnection::rawSend(Packet *packet) {
     return SteamNetworkingMessages()->SendMessageToUser(networkIdentity, packet->data, packet->size, packet->transfer_mode, packet->channel);
 }
 
-Error SteamConnection::sendPending() {
+Error SteamConnection::send_pending() {
     while (pending_retry_packets.size() != 0) {
         auto packet = pending_retry_packets.front()->get();
-        auto errorCode = rawSend(packet);
+        auto errorCode = raw_send(packet);
         if (errorCode == k_EResultOK) {
             delete packet;
             pending_retry_packets.pop_front();
@@ -41,13 +41,13 @@ Error SteamConnection::sendPending() {
     return OK;
 }
 
-void SteamConnection::addPacket(Packet *packet) {
+void SteamConnection::add_packet(Packet *packet) {
     pending_retry_packets.push_back(packet);
 }
 
 Error SteamConnection::send(Packet *packet) {
-    addPacket(packet);
-    return sendPending();
+    add_packet(packet);
+    return send_pending();
 }
 
 Error SteamConnection::ping(const PingPayload &p) {
