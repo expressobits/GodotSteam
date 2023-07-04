@@ -7,6 +7,10 @@
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/godot.hpp>
 
+#include "steam_multiplayer_peer/steam_multiplayer_peer.h"
+#include "steam_multiplayer_peer/steam_id.h"
+#include "steam_multiplayer_peer/steam_connection.h"
+
 #include "godotsteam.h"
 
 using namespace godot;
@@ -16,6 +20,9 @@ static Steam *SteamPtr;
 void initialize_godotsteam(ModuleInitializationLevel level){
 	if(level == MODULE_INITIALIZATION_LEVEL_SCENE){
 		ClassDB::register_class<Steam>();
+        ClassDB::register_class<SteamMultiplayerPeer>();
+        ClassDB::register_class<SteamConnection>();
+        ClassDB::register_class<SteamID>();
 		SteamPtr = memnew(Steam);
 		Engine::get_singleton()->register_singleton("Steam", Steam::get_singleton());
 	}
