@@ -308,7 +308,7 @@ Ref<SteamConnection> SteamMultiplayerPeer::get_connection_by_peer(int peer_id) {
 }
 
 void SteamMultiplayerPeer::add_connection_peer(const SteamID &steamId, int peer_id) {
-    ERR_FAIL_COND_MSG(steamId != SteamUser()->GetSteamID(), "Cannot add self as a new peer.");
+    ERR_FAIL_COND_MSG(steamId == SteamUser()->GetSteamID(), "Cannot add self as a new peer.");
 
     Ref<SteamConnection> connectionData = Ref<SteamConnection>(memnew(SteamConnection(steamId)));
     connections_by_steamId64[steamId.to_int()] = connectionData;
