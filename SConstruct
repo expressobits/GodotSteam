@@ -54,6 +54,7 @@ env.Append(LIBS=[
 # tweak this if you want to use different folders, or more folders, to store your source code in.
 env.Append(CPPPATH=['godotsteam/'])
 sources = Glob('godotsteam/*.cpp')
+sources += Glob('godotsteam/steam_multiplayer_peer/*.cpp')
 
 library = env.SharedLibrary(target=env['target_path'] + env['target_name'] + env["suffix"] + env["SHLIBSUFFIX"], source=sources)
 env.Depends(library, Command("bin/" + steamworks_library, steam_lib_path + "/" + steamworks_library, Copy("$TARGET", "$SOURCE")))
