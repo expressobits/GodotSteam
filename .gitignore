@@ -11,3 +11,4 @@
 .vscode/
 bin/
 .sconsign.dblite
+godotsteam/sdk/**
